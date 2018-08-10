@@ -1,10 +1,10 @@
 #ifndef TASK_H_
 #define TASK_H_
 
-#include <string>
-#include <pthread.h>
-#undef GetUserName //God dammit microsoft!
+#include "common/String.h"
+#include "common/tpt-thread.h"
 #include "TaskListener.h"
+#include "Config.h"
 
 class TaskListener;
 class Task {
@@ -14,8 +14,8 @@ public:
 	int GetProgress();
 	bool GetDone();
 	bool GetSuccess();
-	std::string GetError();
-	std::string GetStatus();
+	String GetError();
+	String GetStatus();
 	void Poll();
 	Task() : listener(NULL) { progress = 0; thProgress = 0; }
 	virtual ~Task();
@@ -23,14 +23,14 @@ protected:
 	int progress;
 	bool done;
 	bool success;
-	std::string status;
-	std::string error;
+	String status;
+	String error;
 
 	int thProgress;
 	bool thDone;
 	bool thSuccess;
-	std::string thStatus;
-	std::string thError;
+	String thStatus;
+	String thError;
 
 	TaskListener * listener;
 	pthread_t doWorkThread;
@@ -41,11 +41,11 @@ protected:
 	virtual void before();
 	virtual void after();
 	virtual bool doWork();
-	static void * doWork_helper(void * ref);
+	TH_ENTRY_POINT static void * doWork_helper(void * ref);
 
 	virtual void notifyProgress(int progress);
-	virtual void notifyError(std::string error);
-	virtual void notifyStatus(std::string status);
+	virtual void notifyError(String error);
+	virtual void notifyStatus(String status);
 
 	virtual void notifyProgressMain();
 	virtual void notifyErrorMain();

@@ -10,7 +10,7 @@ extern Renderer * luacon_ren;
 
 extern bool *luacon_currentCommand;
 extern int luaL_tostring(lua_State* l, int n);
-extern std::string *luacon_lastError;
+extern String *luacon_lastError;
 
 extern int *lua_el_func, *lua_el_mode, *lua_gr_func;
 
@@ -21,12 +21,13 @@ extern int tptElements; //Table for TPT element names
 extern int tptParts, tptPartsMeta, tptElementTransitions, tptPartsCData, tptPartMeta, tptPart, cIndex;
 
 void luacon_hook(lua_State *L, lua_Debug *ar);
-int luacon_step(int mx, int my, std::string , std::string selectr, std::string selectedalt, std::string selectedreplace, int bsx, int bsy);
+int luacon_step(int mx, int my);
 int luacon_mouseevent(int mx, int my, int mb, int event, int mouse_wheel);
-int luacon_keyevent(int key, int modifier, int event);
+int luacon_keyevent(int key, int scan, int modifier, int event);
 int luacon_eval(const char *command);
-const char *luacon_geterror();
+String luacon_geterror();
 void luacon_close();
+void initLegacyProps();
 int luacon_partsread(lua_State* l);
 int luacon_partswrite(lua_State* l);
 int luacon_partread(lua_State* l);
@@ -35,9 +36,6 @@ int luacon_elementread(lua_State* l);
 int luacon_elementwrite(lua_State* l);
 int luacon_transitionread(lua_State* l);
 int luacon_transitionwrite(lua_State* l);
-int luacon_particle_getproperty(const char * key, int * format);
-int luacon_transition_getproperty(const char * key, int * format);
-int luacon_element_getproperty(const char * key, int * format, unsigned int * modified_stuff);
 //int process_command_lua(pixel *vid_buf, char *console, char *console_error);
 
 //Interface
@@ -107,6 +105,7 @@ int luatpt_register_mouseclick(lua_State* l);
 int luatpt_unregister_mouseclick(lua_State* l);
 int luatpt_input(lua_State* l);
 int luatpt_message_box(lua_State* l);
+int luatpt_confirm(lua_State* l);
 int luatpt_get_numOfParts(lua_State* l);
 int luatpt_start_getPartIndex(lua_State* l);
 int luatpt_next_getPartIndex(lua_State* l);
@@ -115,6 +114,8 @@ int luatpt_hud(lua_State* l);
 int luatpt_gravity(lua_State* l);
 int luatpt_airheat(lua_State* l);
 int luatpt_active_menu(lua_State* l);
+int luatpt_menu_enabled(lua_State* l);
+int luatpt_num_menus(lua_State* l);
 int luatpt_decorations_enable(lua_State* l);
 
 int luatpt_heat(lua_State* l);
@@ -129,8 +130,7 @@ int luatpt_getscript(lua_State* l);
 int luatpt_setwindowsize(lua_State* l);
 
 int luatpt_screenshot(lua_State* l);
-int luatpt_getclip(lua_State* l);
-int luatpt_setclip(lua_State* l);
+int luatpt_record(lua_State* l);
 
 
 #endif /* LUASCRIPTHELPER_H_ */

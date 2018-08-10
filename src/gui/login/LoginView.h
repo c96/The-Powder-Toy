@@ -16,18 +16,18 @@ class LoginController;
 class LoginMode;
 class LoginView: public ui::Window {
 	LoginController * c;
-	ui::Point targetSize;
 	ui::Button * loginButton;
 	ui::Button * cancelButton;
 	ui::Label * titleLabel;
 	ui::Label * infoLabel;
 	ui::Textbox * usernameField;
 	ui::Textbox * passwordField;
+	ui::Point targetSize;
 public:
 	class LoginAction;
 	class CancelAction;
 	LoginView();
-	virtual void OnKeyPress(int key, Uint16 character, bool shift, bool ctrl, bool alt);
+	virtual void OnKeyPress(int key, int scan, bool repeat, bool shift, bool ctrl, bool alt);
 	virtual void OnTryExit(ExitMethod method);
 	void AttachController(LoginController * c_) { c = c_; }
 	void NotifyStatusChanged(LoginModel * sender);

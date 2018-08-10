@@ -12,32 +12,37 @@
 
 //VersionInfoStart
 #ifndef SAVE_VERSION
-#define SAVE_VERSION 89
+#define SAVE_VERSION 93
 #endif
 
 #ifndef MINOR_VERSION
-#define MINOR_VERSION 2
+#define MINOR_VERSION 3
 #endif
 
 #ifndef BUILD_NUM
-#define BUILD_NUM 283
+#define BUILD_NUM 340
 #endif
 
 #ifndef SNAPSHOT_ID
 #define SNAPSHOT_ID 0
 #endif
 
-#ifndef STABLE
-#ifndef BETA
-#define BETA
-#define SNAPSHOT
+// Mod ID, used on the http://starcatcher.us/TPT build server
+// The build server will compile for all platforms for you, and send updates in game
+// See jacob1 to get a mod ID
+#ifndef MOD_ID
+#define MOD_ID 0
 #endif
+
+#if defined(SNAPSHOT) || defined(DEBUG)
+#define FUTURE_SAVE_VERSION 93
+#define FUTURE_MINOR_VERSION 3
 #endif
 //VersionInfoEnd
 
 //#define IGNORE_UPDATES //uncomment this for mods, to not get any update notifications
 
-#if defined(DEBUG) || defined(RENDERER) || defined(X86_SSE2)
+#if !(defined(MACOSX) && defined(DEBUG))
 #define HIGH_QUALITY_RESAMPLE			//High quality image resampling, slower but much higher quality than my terribad linear interpolation
 #endif
 
@@ -80,9 +85,8 @@
 #define MTOS_EXPAND(str) #str
 #define MTOS(str) MTOS_EXPAND(str)
 
-#define SERVER "powdertoy.co.uk"
-#define SCRIPTSERVER "powdertoy.co.uk"
-#define STATICSERVER "static.powdertoy.co.uk"
+#define SERVER "tpt.starcatcher.us"
+#define STATICSERVER "statictpt.starcatcher.us"
 
 #define LOCAL_SAVE_DIR "Saves"
 
@@ -93,9 +97,6 @@
 //Number of unique thumbnails to have in cache at one time
 #define THUMB_CACHE_SIZE 256
 
-#ifndef M_PI
-#define M_PI 3.14159265f
-#endif
 #ifndef M_GRAV
 #define M_GRAV 6.67300e-1
 #endif
@@ -114,8 +115,8 @@
 #define YRES	384
 #define NPART XRES*YRES
 
-#define XCNTR   306
-#define YCNTR   192
+#define XCNTR   XRES/2
+#define YCNTR   YRES/2
 
 #define WINDOWW (XRES+BARSIZE)
 #define WINDOWH (YRES+MENUSIZE)
@@ -130,6 +131,7 @@
 #define CELL	4
 #define ISTP	(CELL/2)
 #define CFDS	(4.0f/CELL)
+#define SIM_MAXVELOCITY 1e4f
 
 //Air constants
 #define AIR_TSTEPP 0.3f
@@ -158,30 +160,6 @@
 #define GLASS_IOR		1.9
 #define GLASS_DISP		0.07
 
-//some compatibility stuff for non-standard compilers
-#if defined(WIN) && !defined(strcasecmp)
-#define strcasecmp stricmp
-#endif
-#if defined(_MSC_VER)
-#if _MSC_VER < 1800
-#define fmin min
-#define fminf min
-#define fmax max
-#define fmaxf max
-#else
-#include <algorithm>
-#endif
-#endif
-
-#if defined(_MSC_VER)
-#define TPT_INLINE _inline
-#elif defined(__llvm__)
-#define TPT_INLINE
-#else
-#define TPT_INLINE inline
-#endif
-
 #define SDEUT
-//#define REALHEAT
 
 #endif /* CONFIG_H */

@@ -1,5 +1,4 @@
 #include <bzlib.h>
-#include <sstream>
 #include "gui/dialogues/ConfirmPrompt.h"
 #include "gui/interface/Engine.h"
 #include "UpdateActivity.h"
@@ -7,16 +6,16 @@
 #include "client/HTTP.h"
 #include "client/Client.h"
 #include "Update.h"
-#include "Misc.h"
+#include "Platform.h"
 
 
 class UpdateDownloadTask : public Task
 {
 public:
-	UpdateDownloadTask(std::string updateName, UpdateActivity * a) : updateName(updateName), a(a) {};
+	UpdateDownloadTask(ByteString updateName, UpdateActivity * a) : a(a), updateName(updateName) {}
 private:
 	UpdateActivity * a;
-	std::string updateName;
+	ByteString updateName;
 	virtual void notifyDoneMain(){
 		a->NotifyDone(this);
 	}
@@ -26,7 +25,7 @@ private:
 	}
 	virtual bool doWork()
 	{
-		std::stringstream errorStream;
+		String error;
 		void * request = http_async_req_start(NULL, (char*)updateName.c_str(), NULL, 0, 0);
 		notifyStatus("Downloading update");
 		notifyProgress(-1);
@@ -42,15 +41,14 @@ private:
 		data = http_async_req_stop(request, &status, &dataLength);
 		if (status!=200)
 		{
-			if (data)
-				free(data);
-			errorStream << "Server responded with Status " << status;
-			notifyError("Could not download update");
+			free(data);
+			error = String::Build("Server responded with Status ", status);
+			notifyError("Could not download update: " + error);
 			return false;
 		}
 		if (!data)
 		{
-			errorStream << "Server responded with nothing";
+			error = "Server responded with nothing";
 			notifyError("Server did not return any data");
 			return false;
 		}
@@ -58,16 +56,16 @@ private:
 		notifyStatus("Unpacking update");
 		notifyProgress(-1);
 
-		int uncompressedLength;
+		unsigned int uncompressedLength;
 
 		if(dataLength<16)
 		{
-			errorStream << "Unsufficient data, got " << dataLength << " bytes";
+			error = String::Build("Unsufficient data, got ", dataLength, " bytes");
 			goto corrupt;
 		}
 		if (data[0]!=0x42 || data[1]!=0x75 || data[2]!=0x54 || data[3]!=0x54)
 		{
-			errorStream << "Invalid update format";
+			error = "Invalid update format";
 			goto corrupt;
 		}
 
@@ -80,7 +78,7 @@ private:
 		res = (char *)malloc(uncompressedLength);
 		if (!res)
 		{
-			errorStream << "Unable to allocate " << uncompressedLength << " bytes of memory for decompression";
+			error = String::Build("Unable to allocate ", uncompressedLength, " bytes of memory for decompression");
 			goto corrupt;
 		}
 
@@ -88,7 +86,7 @@ private:
 		dstate = BZ2_bzBuffToBuffDecompress((char *)res, (unsigned *)&uncompressedLength, (char *)(data+8), dataLength-8, 0, 0);
 		if (dstate)
 		{
-			errorStream << "Unable to decompress update: " << dstate;
+			error = String::Build("Unable to decompress update: ", dstate);
 			free(res);
 			goto corrupt;
 		}
@@ -111,16 +109,20 @@ private:
 		return true;
 
 	corrupt:
-		notifyError("Downloaded update is corrupted\n" + errorStream.str());
+		notifyError("Downloaded update is corrupted\n" + error);
 		free(data);
 		return false;
 	}
 };
 
 UpdateActivity::UpdateActivity() {
-	std::stringstream file;
-	file << "http://" << SERVER << Client::Ref().GetUpdateInfo().File;
-	updateDownloadTask = new UpdateDownloadTask(file.str(), this);
+	ByteString file;
+#ifdef UPDATESERVER
+	file = ByteString::Build("http://", UPDATESERVER, Client::Ref().GetUpdateInfo().File);
+#else
+	file = ByteString::Build("http://", SERVER, Client::Ref().GetUpdateInfo().File);
+#endif
+	updateDownloadTask = new UpdateDownloadTask(file, this);
 	updateWindow = new TaskWindow("Downloading update...", updateDownloadTask, true);
 }
 
@@ -149,13 +151,19 @@ void UpdateActivity::NotifyError(Task * sender)
 		virtual void ConfirmCallback(ConfirmPrompt::DialogueResult result) {
 			if (result == ConfirmPrompt::ResultOkay)
 			{
-				OpenURI("http://powdertoy.co.uk/Download.html");
+#ifndef UPDATESERVER
+				Platform::OpenURI("http://powdertoy.co.uk/Download.html");
+#endif
 			}
 			a->Exit();
 		}
 		virtual ~ErrorMessageCallback() { }
 	};
+#ifdef UPDATESERVER
+	new ConfirmPrompt("Autoupdate failed", "Please go online to manually download a newer version.\nError: " + sender->GetError(), new ErrorMessageCallback(this));
+#else
 	new ConfirmPrompt("Autoupdate failed", "Please visit the website to download a newer version.\nError: " + sender->GetError(), new ErrorMessageCallback(this));
+#endif
 }
 
 

@@ -1,14 +1,7 @@
 #pragma once
 
-extern "C" {
-	#include "lua.h"
-	#include "lauxlib.h"
-	#include "lualib.h"
-}
-
 #include "LuaLuna.h"
 
-#include "gui/interface/Platform.h"
 namespace ui
 {
 	class Window;
@@ -67,8 +60,8 @@ class LuaWindow
 	void triggerOnMouseDown(int x, int y, unsigned button);
 	void triggerOnMouseUp(int x, int y, unsigned button);
 	void triggerOnMouseWheel(int x, int y, int d);
-	void triggerOnKeyPress(int key, Uint16 character, bool shift, bool ctrl, bool alt);
-	void triggerOnKeyRelease(int key, Uint16 character, bool shift, bool ctrl, bool alt);
+	void triggerOnKeyPress(int key, int scan, bool repeat, bool shift, bool ctrl, bool alt);
+	void triggerOnKeyRelease(int key, int scan, bool repeat, bool shift, bool ctrl, bool alt);
 
 public:
 	LuaScriptInterface * ci;

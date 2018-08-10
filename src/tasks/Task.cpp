@@ -1,3 +1,4 @@
+#include "Config.h"
 #include "Task.h"
 #include "TaskListener.h"
 
@@ -25,12 +26,12 @@ int Task::GetProgress()
 	return progress;
 }
 
-std::string Task::GetStatus()
+String Task::GetStatus()
 {
 	return status;
 }
 
-std::string Task::GetError()
+String Task::GetError()
 {
 	return error;
 }
@@ -52,14 +53,14 @@ void Task::Poll()
 		int newProgress;
 		bool newDone = false;
 		bool newSuccess = false;
-		std::string newStatus;
-		std::string newError;
+		String newStatus;
+		String newError;
 		pthread_mutex_lock(&taskMutex);
 		newProgress = thProgress;
 		newDone = thDone;
 		newSuccess = thSuccess;
-		newStatus = std::string(thStatus);
-		newError = std::string(thError);
+		newStatus = thStatus;
+		newError = thError;
 		pthread_mutex_unlock(&taskMutex);
 
 		success = newSuccess;
@@ -70,12 +71,12 @@ void Task::Poll()
 		}
 
 		if(newError!=error) {
-			error = std::string(newError);
+			error = newError;
 			notifyErrorMain();
 		}
 
 		if(newStatus!=status) {
-			status = std::string(newStatus);
+			status = newStatus;
 			notifyStatusMain();
 		}
 
@@ -85,9 +86,9 @@ void Task::Poll()
 
 			pthread_join(doWorkThread, NULL);
 			pthread_mutex_destroy(&taskMutex);
-			
+
 			after();
-			
+
 			notifyDoneMain();
 		}
 	}
@@ -122,7 +123,7 @@ void Task::after()
 
 }
 
-void * Task::doWork_helper(void * ref)
+TH_ENTRY_POINT void * Task::doWork_helper(void * ref)
 {
 	bool newSuccess = ((Task*)ref)->doWork();
 	pthread_mutex_lock(&((Task*)ref)->taskMutex);
@@ -139,17 +140,17 @@ void Task::notifyProgress(int progress)
 	pthread_mutex_unlock(&taskMutex);
 }
 
-void Task::notifyStatus(std::string status)
+void Task::notifyStatus(String status)
 {
 	pthread_mutex_lock(&taskMutex);
-	thStatus = std::string(status);
+	thStatus = status;
 	pthread_mutex_unlock(&taskMutex);
 }
 
-void Task::notifyError(std::string error)
+void Task::notifyError(String error)
 {
 	pthread_mutex_lock(&taskMutex);
-	thError = std::string(error);
+	thError = error;
 	pthread_mutex_unlock(&taskMutex);
 }
 

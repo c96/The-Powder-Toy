@@ -3,11 +3,6 @@
 
 #include <vector>
 #include "SearchController.h"
-#include "gui/interface/SaveButton.h"
-#include "gui/interface/Button.h"
-#include "gui/interface/Label.h"
-#include "gui/interface/Spinner.h"
-#include "gui/interface/Textbox.h"
 #include "client/ClientListener.h"
 
 using namespace std;
@@ -36,9 +31,11 @@ private:
 	ui::Button * previousButton;
 	ui::Label * errorLabel;
 	ui::Textbox * searchField;
-	ui::Label * infoLabel;
+	ui::Textbox * pageTextbox;
+	ui::Label * pageLabel;
+	ui::Label * pageCountLabel;
 	ui::Label * tagsLabel;
-	ui::RichLabel * motdLabel;
+	ui::RichLabel * motdLabel = nullptr;
 	ui::Button * sortButton;
 	ui::Button * ownButton;
 	ui::Spinner * loadingSpinner;
@@ -49,6 +46,11 @@ private:
 	ui::Button * clearSelection;
 	void clearSearch();
 	void doSearch();
+	void textChanged();
+	bool changed;
+	unsigned int lastChanged;
+	int pageCount;
+	bool publishButtonShown;
 public:
 	void NotifyTagListChanged(SearchModel * sender);
 	void NotifySaveListChanged(SearchModel * sender);
@@ -64,11 +66,11 @@ public:
     SearchView();
 	virtual ~SearchView();
 	void AttachController(SearchController * _c) { c = _c; }
-	virtual void Search(std::string);
+	virtual void Search(String);
 	virtual void OnTick(float dt);
 	virtual void OnMouseWheel(int x, int y, int d);
-	virtual void OnKeyPress(int key, Uint16 character, bool shift, bool ctrl, bool alt);
-	virtual void OnKeyRelease(int key, Uint16 character, bool shift, bool ctrl, bool alt);
+	virtual void OnKeyPress(int key, int scan, bool repeat, bool shift, bool ctrl, bool alt);
+	virtual void OnKeyRelease(int key, int scan, bool repeat, bool shift, bool ctrl, bool alt);
 
 };
 

@@ -1,10 +1,9 @@
 #include <cmath>
 #include <sys/types.h>
-#include <pthread.h>
-#undef GetUserName //God dammit microsoft!
+#include "common/tpt-thread.h"
 #include "Config.h"
 #include "Gravity.h"
-//#include "powder.h"
+#include "Misc.h"
 
 void Gravity::bilinear_interpolation(float *src, float *dst, int sw, int sh, int rw, int rh)
 {
@@ -28,7 +27,7 @@ void Gravity::bilinear_interpolation(float *src, float *dst, int sw, int sh, int
 			tl = src[sw*(int)floor(fy)+(int)floor(fx)];
 			br = src[sw*fyceil+fxceil];
 			bl = src[sw*fyceil+(int)floor(fx)];
-			dst[rw*y+x] = ((tl*(1.0f-fxc))+(tr*(fxc)))*(1.0f-fyc) + ((bl*(1.0f-fxc))+(br*(fxc)))*(fyc);				
+			dst[rw*y+x] = ((tl*(1.0f-fxc))+(tr*(fxc)))*(1.0f-fyc) + ((bl*(1.0f-fxc))+(br*(fxc)))*(fyc);
 		}
 }
 
@@ -60,6 +59,7 @@ void Gravity::gravity_init()
 
 void Gravity::gravity_cleanup()
 {
+	stop_grav_async();
 #ifdef GRAVFFT
 	grav_fft_cleanup();
 #endif
@@ -74,6 +74,7 @@ void Gravity::gravity_cleanup()
 	free(gravx);
 	free(gravp);
 	free(gravmask);
+	free(obmap);
 }
 
 void Gravity::gravity_update_async()
@@ -126,7 +127,7 @@ void Gravity::gravity_update_async()
 	}
 }
 
-void *Gravity::update_grav_async_helper(void * context)
+TH_ENTRY_POINT void *Gravity::update_grav_async_helper(void * context)
 {
 	((Gravity *)context)->update_grav_async();
 	return NULL;
@@ -144,23 +145,27 @@ void Gravity::update_grav_async()
 	//memset(th_gravy, 0, XRES*YRES*sizeof(float));
 	//memset(th_gravx, 0, XRES*YRES*sizeof(float));
 	//memset(th_gravp, 0, XRES*YRES*sizeof(float));
+#ifdef GRAVFFT
+	if (!grav_fft_status)
+		grav_fft_init();
+#endif
 	while(!thread_done){
 		if(!done){
 			update_grav();
 			done = 1;
 			pthread_mutex_lock(&gravmutex);
-			
+
 			grav_ready = done;
 			thread_done = gravthread_done;
-			
+
 			pthread_mutex_unlock(&gravmutex);
 		} else {
 			pthread_mutex_lock(&gravmutex);
 			pthread_cond_wait(&gravcv, &gravmutex);
-		    
+
 			done = grav_ready;
 			thread_done = gravthread_done;
-			
+
 			pthread_mutex_unlock(&gravmutex);
 		}
 	}
@@ -301,8 +306,8 @@ void Gravity::update_grav()
 	if(changed)
 	{
 		th_gravchanged = 1;
-		if (!grav_fft_status) grav_fft_init();
 
+		membwand(th_gravmap, gravmask, (XRES/CELL)*(YRES/CELL)*sizeof(float), (XRES/CELL)*(YRES/CELL)*sizeof(unsigned));
 		//copy gravmap into padded gravmap array
 		for (y=0; y<YRES/CELL; y++)
 		{
@@ -380,6 +385,7 @@ void Gravity::update_grav(void)
 	memset(th_gravx, 0, (XRES/CELL)*(YRES/CELL)*sizeof(float));
 #endif
 	th_gravchanged = 1;
+	membwand(th_gravmap, gravmask, (XRES/CELL)*(YRES/CELL)*sizeof(float), (XRES/CELL)*(YRES/CELL)*sizeof(unsigned));
 	for (i = 0; i < YRES / CELL; i++) {
 		for (j = 0; j < XRES / CELL; j++) {
 #ifdef GRAV_DIFF
@@ -435,7 +441,7 @@ void Gravity::grav_mask_r(int x, int y, char checkmap[YRES/CELL][XRES/CELL], cha
 			break;
 		x2++;
 	}
-	
+
 	// fill span
 	for (x = x1; x <= x2; x++)
 		checkmap[y][x] = shape[y][x] = 1;

@@ -1,11 +1,23 @@
+#include <cstdio>
+#ifdef WIN
+#include <direct.h>
+#define getcwd _getcwd
+#else
+#include <unistd.h>
+#endif
+#include "SDLCompat.h"
+
 #include "OptionsView.h"
+#include "Format.h"
 #include "gui/Style.h"
 #include "gui/interface/Button.h"
 #include "gui/interface/Label.h"
 #include "gui/interface/DropDown.h"
+#include "gui/interface/Engine.h"
+#include "gui/dialogues/ErrorMessage.h"
 
 OptionsView::OptionsView():
-	ui::Window(ui::Point(-1, -1), ui::Point(300, 310)){
+	ui::Window(ui::Point(-1, -1), ui::Point(300, 369)){
 
 	ui::Label * tempLabel = new ui::Label(ui::Point(4, 5), ui::Point(Size.X-8, 14), "Simulation Options");
 	tempLabel->SetTextColour(style::Colour::InformationTitle);
@@ -77,34 +89,34 @@ OptionsView::OptionsView():
 		OptionsView * v;
 	public:
 		AirModeChanged(OptionsView * v): v(v) { }
-		virtual void OptionChanged(ui::DropDown * sender, std::pair<std::string, int> option) { v->c->SetAirMode(option.second); }
+		virtual void OptionChanged(ui::DropDown * sender, std::pair<String, int> option) { v->c->SetAirMode(option.second); }
 	};
 	airMode = new ui::DropDown(ui::Point(Size.X-88, 146), ui::Point(80, 16));
 	AddComponent(airMode);
-	airMode->AddOption(std::pair<std::string, int>("On", 0));
-	airMode->AddOption(std::pair<std::string, int>("Pressure off", 1));
-	airMode->AddOption(std::pair<std::string, int>("Velocity off", 2));
-	airMode->AddOption(std::pair<std::string, int>("Off", 3));
-	airMode->AddOption(std::pair<std::string, int>("No Update", 4));
+	airMode->AddOption(std::pair<String, int>("On", 0));
+	airMode->AddOption(std::pair<String, int>("Pressure off", 1));
+	airMode->AddOption(std::pair<String, int>("Velocity off", 2));
+	airMode->AddOption(std::pair<String, int>("Off", 3));
+	airMode->AddOption(std::pair<String, int>("No Update", 4));
 	airMode->SetActionCallback(new AirModeChanged(this));
-		
+
 	tempLabel = new ui::Label(ui::Point(8, 146), ui::Point(Size.X-96, 16), "Air Simulation Mode");
 	tempLabel->Appearance.HorizontalAlign = ui::Appearance::AlignLeft;	tempLabel->Appearance.VerticalAlign = ui::Appearance::AlignMiddle;
 	AddComponent(tempLabel);
-		
+
 	class GravityModeChanged: public ui::DropDownAction
 	{
 		OptionsView * v;
 	public:
 		GravityModeChanged(OptionsView * v): v(v) { }
-		virtual void OptionChanged(ui::DropDown * sender, std::pair<std::string, int> option) { v->c->SetGravityMode(option.second); }
-	};	
-		
+		virtual void OptionChanged(ui::DropDown * sender, std::pair<String, int> option) { v->c->SetGravityMode(option.second); }
+	};
+
 	gravityMode = new ui::DropDown(ui::Point(Size.X-88, 166), ui::Point(80, 16));
 	AddComponent(gravityMode);
-	gravityMode->AddOption(std::pair<std::string, int>("Vertical", 0));
-	gravityMode->AddOption(std::pair<std::string, int>("Off", 1));
-	gravityMode->AddOption(std::pair<std::string, int>("Radial", 2));
+	gravityMode->AddOption(std::pair<String, int>("Vertical", 0));
+	gravityMode->AddOption(std::pair<String, int>("Off", 1));
+	gravityMode->AddOption(std::pair<String, int>("Radial", 2));
 	gravityMode->SetActionCallback(new GravityModeChanged(this));
 
 	tempLabel = new ui::Label(ui::Point(8, 166), ui::Point(Size.X-96, 16), "Gravity Simulation Mode");
@@ -116,49 +128,104 @@ OptionsView::OptionsView():
 		OptionsView * v;
 	public:
 		EdgeModeChanged(OptionsView * v): v(v) { }
-		virtual void OptionChanged(ui::DropDown * sender, std::pair<std::string, int> option) { v->c->SetEdgeMode(option.second); }
-	};	
+		virtual void OptionChanged(ui::DropDown * sender, std::pair<String, int> option) { v->c->SetEdgeMode(option.second); }
+	};
 
 	edgeMode = new ui::DropDown(ui::Point(Size.X-88, 186), ui::Point(80, 16));
 	AddComponent(edgeMode);
-	edgeMode->AddOption(std::pair<std::string, int>("Void", 0));
-	edgeMode->AddOption(std::pair<std::string, int>("Solid", 1));
+	edgeMode->AddOption(std::pair<String, int>("Void", 0));
+	edgeMode->AddOption(std::pair<String, int>("Solid", 1));
+	edgeMode->AddOption(std::pair<String, int>("Loop", 2));
 	edgeMode->SetActionCallback(new EdgeModeChanged(this));
 
 	tempLabel = new ui::Label(ui::Point(8, 186), ui::Point(Size.X-96, 16), "Edge Mode");
 	tempLabel->Appearance.HorizontalAlign = ui::Appearance::AlignLeft;	tempLabel->Appearance.VerticalAlign = ui::Appearance::AlignMiddle;
 	AddComponent(tempLabel);
 
-	class ScaleAction: public ui::CheckboxAction
+	class ScaleAction: public ui::DropDownAction
 	{
 		OptionsView * v;
 	public:
-		ScaleAction(OptionsView * v_){	v = v_;	}
-		virtual void ActionCallback(ui::Checkbox * sender){	v->c->SetScale(sender->GetChecked()); }
+		ScaleAction(OptionsView * v): v(v) { }
+		virtual void OptionChanged(ui::DropDown * sender, std::pair<String, int> option) { v->c->SetScale(option.second); }
 	};
-
-	scale = new ui::Checkbox(ui::Point(8, 210), ui::Point(Size.X-6, 16), "Large screen", "");
+	scale = new ui::DropDown(ui::Point(8, 210), ui::Point(40, 16));
+	{
+		int current_scale = ui::Engine::Ref().GetScale();
+		int ix_scale = 1;
+		bool current_scale_valid = false;
+		do
+		{
+			if (current_scale == ix_scale)
+				current_scale_valid = true;
+			scale->AddOption(std::pair<String, int>(String::Build(ix_scale), ix_scale));
+			ix_scale += 1;
+		}
+		while (ui::Engine::Ref().GetMaxWidth() >= ui::Engine::Ref().GetWidth() * ix_scale && ui::Engine::Ref().GetMaxHeight() >= ui::Engine::Ref().GetHeight() * ix_scale);
+		if (!current_scale_valid)
+			scale->AddOption(std::pair<String, int>("current", current_scale));
+	}
 	scale->SetActionCallback(new ScaleAction(this));
-	tempLabel = new ui::Label(ui::Point(scale->Position.X+Graphics::textwidth(scale->GetText().c_str())+20, scale->Position.Y), ui::Point(Size.X-28, 16), "\bg- Double window size for smaller screens");
-	tempLabel->Appearance.HorizontalAlign = ui::Appearance::AlignLeft;	tempLabel->Appearance.VerticalAlign = ui::Appearance::AlignMiddle;
-	AddComponent(tempLabel);
 	AddComponent(scale);
 
+	tempLabel = new ui::Label(ui::Point(scale->Position.X+scale->Size.X+3, scale->Position.Y), ui::Point(Size.X-28, 16), "\bg- Window scale factor for larger screens");
+	tempLabel->Appearance.HorizontalAlign = ui::Appearance::AlignLeft;	tempLabel->Appearance.VerticalAlign = ui::Appearance::AlignMiddle;
+	AddComponent(tempLabel);
+
+
+	class ResizableAction: public ui::CheckboxAction
+	{
+		OptionsView * v;
+	public:
+		ResizableAction(OptionsView * v_){	v = v_;	}
+		virtual void ActionCallback(ui::Checkbox * sender)
+		{
+			v->c->SetResizable(sender->GetChecked());
+		}
+	};
+
+	resizable = new ui::Checkbox(ui::Point(8, scale->Position.Y + 20), ui::Point(Size.X-6, 16), "Resizable", "");
+	resizable->SetActionCallback(new ResizableAction(this));
+	tempLabel = new ui::Label(ui::Point(resizable->Position.X+Graphics::textwidth(resizable->GetText().c_str())+20, resizable->Position.Y), ui::Point(Size.X-28, 16), "\bg- Allow resizing and maximizing window");
+	tempLabel->Appearance.HorizontalAlign = ui::Appearance::AlignLeft;	tempLabel->Appearance.VerticalAlign = ui::Appearance::AlignMiddle;
+	AddComponent(tempLabel);
+	AddComponent(resizable);
 
 	class FullscreenAction: public ui::CheckboxAction
 	{
 		OptionsView * v;
 	public:
 		FullscreenAction(OptionsView * v_){	v = v_;	}
-		virtual void ActionCallback(ui::Checkbox * sender){	v->c->SetFullscreen(sender->GetChecked()); }
+		virtual void ActionCallback(ui::Checkbox * sender)
+		{
+			v->c->SetFullscreen(sender->GetChecked());
+		}
 	};
 
-	fullscreen = new ui::Checkbox(ui::Point(8, 230), ui::Point(Size.X-6, 16), "Fullscreen", "");
+	fullscreen = new ui::Checkbox(ui::Point(8, resizable->Position.Y + 20), ui::Point(Size.X-6, 16), "Fullscreen", "");
 	fullscreen->SetActionCallback(new FullscreenAction(this));
 	tempLabel = new ui::Label(ui::Point(fullscreen->Position.X+Graphics::textwidth(fullscreen->GetText().c_str())+20, fullscreen->Position.Y), ui::Point(Size.X-28, 16), "\bg- Fill the entire screen");
 	tempLabel->Appearance.HorizontalAlign = ui::Appearance::AlignLeft;	tempLabel->Appearance.VerticalAlign = ui::Appearance::AlignMiddle;
 	AddComponent(tempLabel);
 	AddComponent(fullscreen);
+
+	class AltFullscreenAction: public ui::CheckboxAction
+	{
+		OptionsView * v;
+	public:
+		AltFullscreenAction(OptionsView * v_){	v = v_;	}
+		virtual void ActionCallback(ui::Checkbox * sender)
+		{
+			v->c->SetAltFullscreen(sender->GetChecked());
+		}
+	};
+
+	altFullscreen = new ui::Checkbox(ui::Point(23, fullscreen->Position.Y + 20), ui::Point(Size.X-6, 16), "Change Resolution", "");
+	altFullscreen->SetActionCallback(new AltFullscreenAction(this));
+	tempLabel = new ui::Label(ui::Point(altFullscreen->Position.X+Graphics::textwidth(altFullscreen->GetText().c_str())+20, altFullscreen->Position.Y), ui::Point(Size.X-28, 16), "\bg- Set optimial screen resolution");
+	tempLabel->Appearance.HorizontalAlign = ui::Appearance::AlignLeft;	tempLabel->Appearance.VerticalAlign = ui::Appearance::AlignMiddle;
+	AddComponent(tempLabel);
+	AddComponent(altFullscreen);
 
 
 	class FastQuitAction: public ui::CheckboxAction
@@ -169,7 +236,7 @@ OptionsView::OptionsView():
 		virtual void ActionCallback(ui::Checkbox * sender){	v->c->SetFastQuit(sender->GetChecked()); }
 	};
 
-	fastquit = new ui::Checkbox(ui::Point(8, 250), ui::Point(Size.X-6, 16), "Fast Quit", "");
+	fastquit = new ui::Checkbox(ui::Point(8, altFullscreen->Position.Y + 20), ui::Point(Size.X-6, 16), "Fast Quit", "");
 	fastquit->SetActionCallback(new FastQuitAction(this));
 	tempLabel = new ui::Label(ui::Point(fastquit->Position.X+Graphics::textwidth(fastquit->GetText().c_str())+20, fastquit->Position.Y), ui::Point(Size.X-28, 16), "\bg- Always exit completely when hitting close");
 	tempLabel->Appearance.HorizontalAlign = ui::Appearance::AlignLeft;	tempLabel->Appearance.VerticalAlign = ui::Appearance::AlignMiddle;
@@ -184,12 +251,41 @@ OptionsView::OptionsView():
 		virtual void ActionCallback(ui::Checkbox * sender){	v->c->SetShowAvatars(sender->GetChecked()); }
 	};
 
-	showAvatars = new ui::Checkbox(ui::Point(8, 270), ui::Point(Size.X-6, 16), "Show Avatars", "");
+	showAvatars = new ui::Checkbox(ui::Point(8, fastquit->Position.Y + 20), ui::Point(Size.X-6, 16), "Show Avatars", "");
 	showAvatars->SetActionCallback(new ShowAvatarsAction(this));
 	tempLabel = new ui::Label(ui::Point(showAvatars->Position.X+Graphics::textwidth(showAvatars->GetText().c_str())+20, showAvatars->Position.Y), ui::Point(Size.X-28, 16), "\bg- Disable if you have a slow connection");
 	tempLabel->Appearance.HorizontalAlign = ui::Appearance::AlignLeft;	tempLabel->Appearance.VerticalAlign = ui::Appearance::AlignMiddle;
 	AddComponent(tempLabel);
 	AddComponent(showAvatars);
+
+	class DataFolderAction: public ui::ButtonAction
+	{
+	public:
+		DataFolderAction() { }
+		void ActionCallback(ui::Button * sender)
+		{
+//one of these should always be defined
+#ifdef WIN
+			const char* openCommand = "explorer ";
+#elif MACOSX
+			const char* openCommand = "open ";
+//#elif LIN
+#else
+			const char* openCommand = "xdg-open ";
+#endif
+			char* workingDirectory = new char[FILENAME_MAX+strlen(openCommand)];
+			sprintf(workingDirectory, "%s\"%s\"", openCommand, getcwd(NULL, 0));
+			system(workingDirectory);
+			delete[] workingDirectory;
+		}
+	};
+	ui::Button * dataFolderButton = new ui::Button(ui::Point(8, Size.Y-38), ui::Point(90, 16), "Open Data Folder");
+	dataFolderButton->SetActionCallback(new DataFolderAction());
+	AddComponent(dataFolderButton);
+
+	tempLabel = new ui::Label(ui::Point(dataFolderButton->Position.X+dataFolderButton->Size.X+3, dataFolderButton->Position.Y), ui::Point(Size.X-28, 16), "\bg- Open the data and preferences folder");
+	tempLabel->Appearance.HorizontalAlign = ui::Appearance::AlignLeft;	tempLabel->Appearance.VerticalAlign = ui::Appearance::AlignMiddle;
+	AddComponent(tempLabel);
 
 	class CloseAction: public ui::ButtonAction
 	{
@@ -218,8 +314,10 @@ void OptionsView::NotifySettingsChanged(OptionsModel * sender)
 	airMode->SetOption(sender->GetAirMode());
 	gravityMode->SetOption(sender->GetGravityMode());
 	edgeMode->SetOption(sender->GetEdgeMode());
-	scale->SetChecked(sender->GetScale());
+	scale->SetOption(sender->GetScale());
+	resizable->SetChecked(sender->GetResizable());
 	fullscreen->SetChecked(sender->GetFullscreen());
+	altFullscreen->SetChecked(sender->GetAltFullscreen());
 	fastquit->SetChecked(sender->GetFastQuit());
 	showAvatars->SetChecked(sender->GetShowAvatars());
 }
@@ -231,7 +329,7 @@ void OptionsView::AttachController(OptionsController * c_)
 
 void OptionsView::OnDraw()
 {
-	Graphics * g = ui::Engine::Ref().g;
+	Graphics * g = GetGraphics();
 	g->clearrect(Position.X-2, Position.Y-2, Size.X+3, Size.Y+3);
 	g->drawrect(Position.X, Position.Y, Size.X, Size.Y, 255, 255, 255, 255);
 	g->draw_line(Position.X+1, Position.Y+scale->Position.Y-4, Position.X+Size.X-1, Position.Y+scale->Position.Y-4, 255, 255, 255, 180);
@@ -245,4 +343,3 @@ void OptionsView::OnTryExit(ExitMethod method)
 
 OptionsView::~OptionsView() {
 }
-

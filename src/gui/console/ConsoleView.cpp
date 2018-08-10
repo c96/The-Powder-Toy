@@ -24,38 +24,45 @@ ConsoleView::ConsoleView():
 	commandField->SetBorder(false);
 }
 
-void ConsoleView::DoKeyPress(int key, Uint16 character, bool shift, bool ctrl, bool alt)
+void ConsoleView::DoKeyPress(int key, int scan, bool repeat, bool shift, bool ctrl, bool alt)
 {
+	if ((scan == SDL_SCANCODE_GRAVE && key != '~') || key == SDLK_ESCAPE)
+	{
+		if (!repeat)
+			doClose = true;
+		return;
+	}
 	switch(key)
 	{
-	case KEY_ESCAPE:
-	case '`':
-		if (character != '~')
-			c->CloseConsole();
-		else
-			Window::DoKeyPress(key, character, shift, ctrl, alt);
-		break;
-	case KEY_RETURN:
-	case KEY_ENTER:
+	case SDLK_RETURN:
+	case SDLK_KP_ENTER:
 		c->EvaluateCommand(commandField->GetText());
 		commandField->SetText("");
 		commandField->SetDisplayText("");
 		break;
-	case KEY_DOWN:
+	case SDLK_DOWN:
 		c->NextCommand();
 		break;
-	case KEY_UP:
+	case SDLK_UP:
 		c->PreviousCommand();
 		break;
 	default:
-		Window::DoKeyPress(key, character, shift, ctrl, alt);
+		Window::DoKeyPress(key, scan, repeat, shift, ctrl, alt);
 		break;
 	}
 }
 
+void ConsoleView::DoTextInput(String text)
+{
+	if (text == "~")
+		doClose = false;
+	if (!doClose)
+		Window::DoTextInput(text);
+}
+
 void ConsoleView::NotifyPreviousCommandsChanged(ConsoleModel * sender)
 {
-	for(int i = 0; i < commandList.size(); i++)
+	for (size_t i = 0; i < commandList.size(); i++)
 	{
 		RemoveComponent(commandList[i]);
 		delete commandList[i];
@@ -91,12 +98,22 @@ void ConsoleView::NotifyCurrentCommandChanged(ConsoleModel * sender)
 
 void ConsoleView::OnDraw()
 {
-	Graphics * g = ui::Engine::Ref().g;
+	Graphics * g = GetGraphics();
 	g->fillrect(Position.X, Position.Y, Size.X, Size.Y, 0, 0, 0, 110);
 	g->draw_line(Position.X, Position.Y+Size.Y-16, Position.X+Size.X, Position.Y+Size.Y-16, 255, 255, 255, 160);
 	g->draw_line(Position.X, Position.Y+Size.Y, Position.X+Size.X, Position.Y+Size.Y, 255, 255, 255, 200);
 }
 
-ConsoleView::~ConsoleView() {
+void ConsoleView::OnTick(float dt)
+{
+	if (doClose)
+	{
+		c->CloseConsole();
+		doClose = false;
+	}
+}
+
+ConsoleView::~ConsoleView()
+{
 }
 

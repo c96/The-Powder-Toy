@@ -18,7 +18,7 @@ class RenderView: public ui::Window {
 	std::vector<ui::Checkbox*> renderModes;
 	std::vector<ui::Checkbox*> displayModes;
 	std::vector<ui::Checkbox*> colourModes;
-	std::string toolTip;
+	String toolTip;
 	int toolTipPresence;
 	bool isToolTipFadingIn;
 	int line1, line2, line3, line4;
@@ -34,10 +34,11 @@ public:
 	void NotifyColourChanged(RenderModel * sender);
 	void AttachController(RenderController * c_) { c = c_; }
 	void OnMouseDown(int x, int y, unsigned button);
+	void OnTryExit(ExitMethod method);
 	virtual void OnDraw();
 	virtual void OnTick(float dt);
-	virtual void OnKeyPress(int key, Uint16 character, bool shift, bool ctrl, bool alt);
-	virtual void ToolTip(ui::Component * sender, ui::Point mousePosition, std::string toolTip);
+	virtual void OnKeyPress(int key, int scan, bool repeat, bool shift, bool ctrl, bool alt);
+	virtual void ToolTip(ui::Point senderPosition, String toolTip);
 	virtual ~RenderView();
 };
 
